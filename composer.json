@@ -1,0 +1,22 @@
+{
+    "name": "motekar/wporm",
+    "description": "WordPress ORM based on Laravel",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Fadlul Alim",
+            "email": "fad.lee@hotmail.com"
+        }
+    ],
+    "require": {
+        "illuminate/database": "6.0"
+    },
+    "require-dev": {
+    },
+    "autoload": {
+        "psr-4": {
+            "Motekar\\WPORM\\": "src/"
+        }
+    }
+}
