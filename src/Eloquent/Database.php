@@ -74,7 +74,7 @@ class Database implements ConnectionInterface
      *
      * @return \Illuminate\Database\Query\Builder
      */
-    public function table($table)
+    public function table($table, $as = NULL)
     {
         $processor = $this->getPostProcessor();
 
@@ -444,8 +444,28 @@ class Database implements ConnectionInterface
         return Arr::get($this->config, $option);
     }
 
+    /**
+     * Run a select statement against the database and returns a generator.
+     *
+     * @param  string  $query
+     * @param  array  $bindings
+     * @param  bool  $useReadPdo
+     * @return \Generator
+     */
     public function cursor($query, $bindings = [], $useReadPdo = true)
     {
         parent::cursor($query, $bindings, $useReadPdo);
+    }
+
+    /**
+     * Get a new query builder instance.
+     *
+     * @return \Illuminate\Database\Query\Builder
+     */
+    public function query()
+    {
+        return new Builder(
+            $this, $this->getQueryGrammar(), $this->getPostProcessor()
+        );
     }
 }
