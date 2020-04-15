@@ -1,5 +1,5 @@
 <?php
-namespace Motekar\WPORM\Trait;
+namespace Motekar\WPORM\Traits;
 
 // https://github.com/nicolaslopezj/searchable
 
