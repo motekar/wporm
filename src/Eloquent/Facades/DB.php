@@ -2,7 +2,7 @@
 namespace Motekar\WPORM\Eloquent\Facades;
 
 use Illuminate\Support\Facades\Facade;
-use Motekar\WPORM\Eloquent\Database;
+use Motekar\WPORM\Eloquent\Connection;
 
 /**
  * @see \Illuminate\Database\DatabaseManager
@@ -17,6 +17,6 @@ class DB extends Facade
      */
     protected static function getFacadeAccessor()
     {
-        return Database::instance();
+        return Connection::instance();
     }
 }

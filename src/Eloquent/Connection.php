@@ -1,17 +1,24 @@
 <?php
 namespace Motekar\WPORM\Eloquent;
 
-use Illuminate\Database\ConnectionInterface;
-use Illuminate\Database\Query\Builder;
-use Illuminate\Database\Query\Grammars\Grammar;
-use Illuminate\Database\Query\Processors\Processor;
-use Illuminate\Database\Query\Expression;
+use Illuminate\Database\MySqlConnection;
 use Illuminate\Database\QueryException;
-use Illuminate\Support\Arr;
+use Illuminate\Database\Schema\Grammars\MySqlGrammar;
 
-class Database implements ConnectionInterface
+/**
+ * Connection Class.
+ *
+ * @package Motekar\WPORM\Eloquent
+ *
+ * @author Fadlul Alim <fad.lee@hotmail.com>
+ */
+class Connection extends MySqlConnection
 {
-
+    /**
+     * Instance of WPDB
+     *
+     * @var WPDB
+     */
     public $db;
 
     /**
@@ -20,13 +27,6 @@ class Database implements ConnectionInterface
      * @var int
      */
     public $transactionCount = 0;
-
-    /**
-     * The database connection configuration options.
-     *
-     * @var array
-     */
-    protected $config = [];
 
     /**
      * Initializes the Database class
@@ -52,49 +52,18 @@ class Database implements ConnectionInterface
         global $wpdb;
 
         $this->config = [
-            'name' => 'wp-eloquent-mysql2',
+            'name' => 'wp-orm',
         ];
+
         $this->db = $wpdb;
-    }
 
-    /**
-     * Get the database connection name.
-     *
-     * @return string|null
-     */
-    public function getName()
-    {
-        return $this->getConfig('name');
-    }
+        $this->database = $this->db->dbname;
+        $this->tablePrefix = $this->db->prefix;
 
-    /**
-     * Begin a fluent query against a database table.
-     *
-     * @param  string $table
-     *
-     * @return \Illuminate\Database\Query\Builder
-     */
-    public function table($table, $as = NULL)
-    {
-        $processor = $this->getPostProcessor();
+        $this->useDefaultQueryGrammar();
+        $this->useDefaultPostProcessor();
 
-        $table = $this->db->prefix . $table;
-
-        $query = new Builder($this, $this->getQueryGrammar(), $processor);
-
-        return $query->from($table);
-    }
-
-    /**
-     * Get a new raw query expression.
-     *
-     * @param  mixed $value
-     *
-     * @return \Illuminate\Database\Query\Expression
-     */
-    public function raw($value)
-    {
-        return new Expression($value);
+        $this->setPdo($this);
     }
 
     /**
@@ -149,7 +118,6 @@ class Database implements ConnectionInterface
      */
     private function bind_params($query, $bindings, $update = false)
     {
-
         $query = str_replace('"', '`', $query);
         $bindings = $this->prepareBindings($bindings);
 
@@ -171,66 +139,6 @@ class Database implements ConnectionInterface
         $query = vsprintf($query, $bindings);
 
         return $query;
-    }
-
-    /**
-     * Bind and run the query
-     *
-     * @param  string $query
-     * @param  array $bindings
-     * @throws QueryException
-     *
-     * @return array
-     */
-    public function bind_and_run($query, $bindings = array())
-    {
-        $new_query = $this->bind_params($query, $bindings);
-
-        $result = $this->db->query($new_query);
-
-        if ($result === false || $this->db->last_error)
-            throw new QueryException($new_query, $bindings, new \Exception($this->db->last_error));
-
-        return (array) $result;
-    }
-
-    /**
-     * Run an insert statement against the database.
-     *
-     * @param  string $query
-     * @param  array $bindings
-     *
-     * @return bool
-     */
-    public function insert($query, $bindings = array())
-    {
-        return $this->statement($query, $bindings);
-    }
-
-    /**
-     * Run an update statement against the database.
-     *
-     * @param  string $query
-     * @param  array $bindings
-     *
-     * @return int
-     */
-    public function update($query, $bindings = array())
-    {
-        return $this->affectingStatement($query, $bindings);
-    }
-
-    /**
-     * Run a delete statement against the database.
-     *
-     * @param  string $query
-     * @param  array $bindings
-     *
-     * @return int
-     */
-    public function delete($query, $bindings = array())
-    {
-        return $this->affectingStatement($query, $bindings);
     }
 
     /**
@@ -368,7 +276,7 @@ class Database implements ConnectionInterface
      *
      * @return void
      */
-    public function rollBack()
+    public function rollBack($toLevel = NULL)
     {
         if ($this->transactionCount < 1) {
             return;
@@ -401,24 +309,16 @@ class Database implements ConnectionInterface
         // TODO: Implement pretend() method.
     }
 
-    public function getPostProcessor()
-    {
-        return new Processor();
-    }
-
-    public function getQueryGrammar()
-    {
-        return new Grammar();
-    }
-
     /**
-     * Return self as PDO
+     * Called as PDO.
+     * Return affected rows
      *
-     * @return \WeDevs\ORM\Eloquent\Database
+     * @param  string $args
+     *
+     * @return int
      */
-    public function getPdo()
-    {
-        return $this;
+    public function exec(string $statement) {
+        return $this->db->query($statement);
     }
 
     /**
@@ -434,17 +334,6 @@ class Database implements ConnectionInterface
     }
 
     /**
-     * Get an option from the configuration options.
-     *
-     * @param  string|null  $option
-     * @return mixed
-     */
-    public function getConfig($option = null)
-    {
-        return Arr::get($this->config, $option);
-    }
-
-    /**
      * Run a select statement against the database and returns a generator.
      *
      * @param  string  $query
@@ -454,18 +343,19 @@ class Database implements ConnectionInterface
      */
     public function cursor($query, $bindings = [], $useReadPdo = true)
     {
-        parent::cursor($query, $bindings, $useReadPdo);
+        // TODO: Implement cursor() method.
     }
 
     /**
-     * Get a new query builder instance.
+     * Get schema grammar instance.
      *
-     * @return \Illuminate\Database\Query\Builder
+     * @return \Illuminate\Database\Schema\Grammars\Grammar
      */
-    public function query()
-    {
-        return new Builder(
-            $this, $this->getQueryGrammar(), $this->getPostProcessor()
-        );
+    public function getSchemaGrammar() {
+        $grammar = new MySqlGrammar;
+
+        $grammar->setTablePrefix($this->getTablePrefix());
+
+        return $grammar;
     }
 }
